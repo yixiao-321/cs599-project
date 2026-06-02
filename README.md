@@ -17,7 +17,8 @@ cs599-project/
 │   │   ├── sales_analyzer.py     # 销售数据分析 Agent
 │   │   ├── anomaly_detector.py   # 异常检测 Agent
 │   │   ├── report_generator.py   # 报表生成 Agent
-│   │   └── visualization_agent.py # 数据可视化 Agent
+│   │   ├── visualization_agent.py # 数据可视化 Agent
+│   │   └── chat_agent.py         # 智能问答 Agent
 │   ├── workflow/                 # LangGraph 工作流
 │   │   └── workflow.py           # 报表生成工作流
 │   ├── llm/                      # LLM 客户端
@@ -25,6 +26,8 @@ cs599-project/
 │   │   └── prompts.py            # 提示词模板
 │   ├── models/                   # 数据库模型
 │   │   └── database.py           # SQLAlchemy 模型定义
+│   ├── services/                 # 服务层
+│   │   └── user_service.py       # 用户服务（登录验证）
 │   ├── data/                     # 数据处理
 │   │   └── init_data.py          # 初始化示例数据
 │   └── templates/                # 前端模板
@@ -33,6 +36,7 @@ cs599-project/
 │       ├── reports.html          # 智能报表页面
 │       └── alerts.html           # 异常预警页面
 ├── .env                          # 环境变量配置
+├── .gitignore                    # Git 忽略配置
 ├── requirements.txt              # Python 依赖
 └── main.py                       # 项目启动入口
 ```
@@ -76,6 +80,12 @@ cs599-project/
 - 告警状态监控
 - 业务指标卡片
 
+### 5. 智能问答
+- 报表内容问答
+- 数据分析解释
+- 常见问题快速回答
+- 响应速度优化（缓存机制）
+
 ## 快速开始
 
 ### 环境要求
@@ -87,7 +97,7 @@ cs599-project/
 
 1. **克隆项目**
 ```bash
-git clone <repository-url>
+git clone https://github.com/yixiao-321/cs599-project.git
 cd cs599-project
 ```
 
@@ -116,7 +126,19 @@ python main.py
 
 打开浏览器访问：`http://localhost:8000`
 
+## 登录账号
+
+| 用户名 | 密码 | 姓名 |
+|--------|------|------|
+| admin | 123456 | 管理员 |
+| zhangsan | 123456 | 张三 |
+| lisi | 123456 | 李四 |
+
 ## API 接口
+
+### 登录认证
+- `POST /api/login` - 用户登录
+- `POST /api/logout` - 用户退出
 
 ### 销售分析
 - `GET /api/sales/analysis?days=7` - 获取销售分析报告
@@ -139,6 +161,10 @@ python main.py
 
 ### 工作流
 - `GET /api/workflow/run?days=7` - 执行完整报表生成工作流
+
+### 智能问答
+- `POST /api/chat` - 智能问答接口
+- `POST /api/chat/stream` - 流式响应接口
 
 ## Agent 工作流
 
@@ -180,6 +206,13 @@ python main.py
 - severity: 严重程度 (high/medium/low)
 - resolved: 是否已处理
 
+### User (用户记录)
+- username: 用户名
+- password_hash: 密码哈希(MD5)
+- name: 用户姓名
+- email: 邮箱
+- is_active: 是否激活
+
 ## 开发说明
 
 ### 目录结构规范
@@ -188,6 +221,7 @@ python main.py
 - `app/workflow/`：LangGraph 工作流定义
 - `app/llm/`：LLM 客户端与提示词管理
 - `app/models/`：数据库 ORM 模型
+- `app/services/`：业务服务层
 - `app/templates/`：前端 HTML 模板
 
 ### 代码规范
