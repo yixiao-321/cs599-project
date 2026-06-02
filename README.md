@@ -6,39 +6,44 @@
 
 ```
 cs599-project/
-├── app/                          # 主应用目录
-│   ├── __init__.py               # 应用初始化
-│   ├── main.py                   # FastAPI 主入口
-│   ├── config.py                 # 配置管理
-│   ├── api/                      # REST API 路由
-│   │   └── routes.py             # API 端点定义
-│   ├── agent/                    # Agent 组件
-│   │   ├── __init__.py
-│   │   ├── sales_analyzer.py     # 销售数据分析 Agent
-│   │   ├── anomaly_detector.py   # 异常检测 Agent
-│   │   ├── report_generator.py   # 报表生成 Agent
-│   │   ├── visualization_agent.py # 数据可视化 Agent
-│   │   └── chat_agent.py         # 智能问答 Agent
-│   ├── workflow/                 # LangGraph 工作流
-│   │   └── workflow.py           # 报表生成工作流
-│   ├── llm/                      # LLM 客户端
-│   │   ├── client.py             # DeepSeek API 客户端
-│   │   └── prompts.py            # 提示词模板
-│   ├── models/                   # 数据库模型
-│   │   └── database.py           # SQLAlchemy 模型定义
-│   ├── services/                 # 服务层
-│   │   └── user_service.py       # 用户服务（登录验证）
-│   ├── data/                     # 数据处理
-│   │   └── init_data.py          # 初始化示例数据
-│   └── templates/                # 前端模板
-│       ├── index.html            # 登录页面
-│       ├── dashboard.html        # 数据仪表盘
-│       ├── reports.html          # 智能报表页面
-│       └── alerts.html           # 异常预警页面
+├── docs/                         # 项目文档
+│   └── architecture.md           # 详细架构说明
+├── src/                          # 项目源代码
+│   ├── app/                      # 主应用目录
+│   │   ├── __init__.py           # 应用初始化
+│   │   ├── main.py               # FastAPI 主入口
+│   │   ├── config.py             # 配置管理
+│   │   ├── api/                  # REST API 路由
+│   │   │   └── routes.py         # API 端点定义
+│   │   ├── agent/                # Agent 组件
+│   │   │   ├── __init__.py
+│   │   │   ├── sales_analyzer.py     # 销售数据分析 Agent
+│   │   │   ├── anomaly_detector.py   # 异常检测 Agent
+│   │   │   ├── report_generator.py   # 报表生成 Agent
+│   │   │   ├── visualization_agent.py # 数据可视化 Agent
+│   │   │   └── chat_agent.py         # 智能问答 Agent
+│   │   ├── workflow/             # LangGraph 工作流
+│   │   │   └── workflow.py       # 报表生成工作流
+│   │   ├── llm/                  # LLM 客户端
+│   │   │   ├── client.py         # DeepSeek API 客户端
+│   │   │   └── prompts.py        # 提示词模板
+│   │   ├── models/               # 数据库模型
+│   │   │   └── database.py       # SQLAlchemy 模型定义
+│   │   ├── services/             # 服务层
+│   │   │   └── user_service.py   # 用户服务（登录验证）
+│   │   ├── data/                 # 数据处理
+│   │   │   └── init_data.py      # 初始化示例数据
+│   │   └── templates/            # 前端模板
+│   │       ├── index.html        # 登录页面
+│   │       ├── dashboard.html    # 数据仪表盘
+│   │       ├── reports.html      # 智能报表页面
+│   │       └── alerts.html       # 异常预警页面
+│   └── main.py                   # 项目启动入口
 ├── .env                          # 环境变量配置
 ├── .gitignore                    # Git 忽略配置
 ├── requirements.txt              # Python 依赖
-└── main.py                       # 项目启动入口
+├── LICENSE                       # 开源协议
+└── README.md                     # 项目说明文档
 ```
 
 ## 技术栈
