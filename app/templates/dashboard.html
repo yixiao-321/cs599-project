@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数据仪表盘 - 电商数据分析平台</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Microsoft YaHei', sans-serif; background: #f5f7fa; }
+        
+        .container { display: flex; min-height: 100vh; }
+        
+        .sidebar {
+            width: 250px;
+            background: linear-gradient(180deg, #2d3748 0%, #1a202c 100%);
+            color: white;
+            padding: 20px;
+        }
+        .sidebar .logo {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        .sidebar nav ul { list-style: none; }
+        .sidebar nav ul li { margin-bottom: 10px; }
+        .sidebar nav ul li a {
+            color: rgba(255,255,255,0.8);
+            text-decoration: none;
+            padding: 12px 16px;
+            display: block;
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+        .sidebar nav ul li a:hover, .sidebar nav ul li a.active {
+            background: rgba(102, 126, 234, 0.3);
+            color: white;
+        }
+        
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        .header {
+            background: white;
+            padding: 20px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        .header h1 { font-size: 24px; color: #333; }
+        .header .user-info { display: flex; align-items: center; gap: 15px; }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            padding: 20px 30px;
+        }
+        .stat-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        .stat-card .icon { font-size: 32px; margin-bottom: 10px; }
+        .stat-card .value { font-size: 28px; font-weight: bold; color: #333; }
+        .stat-card .label { color: #666; font-size: 14px; }
+        .stat-card.trend-up .value { color: #28a745; }
+        .stat-card.trend-down .value { color: #dc3545; }
+        
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+            padding: 0 30px 20px;
+        }
+        .chart-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        .chart-card h3 { margin-bottom: 20px; color: #333; }
+        
+        .alert-panel {
+            margin: 0 30px 20px;
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        .alert-panel h3 { margin-bottom: 15px; color: #333; }
+        .alert-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+        }
+        .alert-item.high { background: #fef0f0; border-left: 4px solid #dc3545; }
+        .alert-item.medium { background: #fff3cd; border-left: 4px solid #ffc107; }
+        .alert-item.low { background: #e7f3ff; border-left: 4px solid #007bff; }
+        
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .btn-primary { background: #667eea; color: white; }
+        .btn-secondary { background: #e9ecef; color: #333; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <aside class="sidebar">
+            <div class="logo">📊 数据分析平台</div>
+            <nav>
+                <ul>
+                    <li><a href="/dashboard" class="active">数据报表</a></li>
+                    <li><a href="/reports">智能报表</a></li>
+                    <li><a href="/alerts">异常预警</a></li>
+                </ul>
+            </nav>
+        </aside>
+        
+        <main class="main-content">
+            <header class="header">
+                <h1>数据仪表盘</h1>
+                <div class="user-info">
+                    <span>管理员</span>
+                    <button class="btn btn-secondary">设置</button>
+                    <button class="btn btn-primary" onclick="logout()">退出登录</button>
+                </div>
+            </header>
+            
+            <div class="stats-grid">
+                <div class="stat-card trend-up">
+                    <div class="icon">💰</div>
+                    <div class="value" id="totalSales">¥0.00</div>
+                    <div class="label">总销售额</div>
+                </div>
+                <div class="stat-card trend-up">
+                    <div class="icon">📦</div>
+                    <div class="value" id="totalOrders">0</div>
+                    <div class="label">订单总数</div>
+                </div>
+                <div class="stat-card">
+                    <div class="icon">🛒</div>
+                    <div class="value" id="avgOrder">¥0.00</div>
+                    <div class="label">平均订单价</div>
+                </div>
+                <div class="stat-card trend-down">
+                    <div class="icon">⚠️</div>
+                    <div class="value" id="activeAlerts">0</div>
+                    <div class="label">待处理告警</div>
+                </div>
+            </div>
+            
+            <div class="charts-grid">
+                <div class="chart-card">
+                    <h3>销售趋势</h3>
+                    <canvas id="salesChart" height="250"></canvas>
+                </div>
+                <div class="chart-card">
+                    <h3>分类销售占比</h3>
+                    <canvas id="categoryChart" height="250"></canvas>
+                </div>
+            </div>
+            
+            <div class="alert-panel">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h3>最新告警</h3>
+                    <a href="/alerts" class="btn btn-primary">查看全部</a>
+                </div>
+                <div id="alertList"></div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        async function loadSummary() {
+            const response = await fetch('/api/summary?days=7');
+            const data = await response.json();
+            document.getElementById('totalSales').textContent = '¥' + data.total_sales.toLocaleString();
+            document.getElementById('totalOrders').textContent = data.total_orders;
+            document.getElementById('avgOrder').textContent = '¥' + data.avg_order_value.toFixed(2);
+        }
+        
+        async function loadAlerts() {
+            const response = await fetch('/api/alerts');
+            const data = await response.json();
+            document.getElementById('activeAlerts').textContent = data.total_alerts || 0;
+            
+            const alertList = document.getElementById('alertList');
+            alertList.innerHTML = '';
+            
+            if (data.alerts && data.alerts.length > 0) {
+                data.alerts.slice(0, 3).forEach(alert => {
+                    const item = document.createElement('div');
+                    item.className = `alert-item ${alert.severity}`;
+                    item.innerHTML = `
+                        <span>${alert.message}</span>
+                        <button class="btn btn-primary" onclick="resolveAlert(${alert.id})">处理</button>
+                    `;
+                    alertList.appendChild(item);
+                });
+            } else {
+                alertList.innerHTML = '<p style="color: #666; text-align: center;">暂无告警信息</p>';
+            }
+        }
+        
+        async function resolveAlert(id) {
+            await fetch(`/api/alerts/${id}/resolve`, { method: 'POST' });
+            loadAlerts();
+        }
+        
+        function initCharts() {
+            const salesCtx = document.getElementById('salesChart').getContext('2d');
+            new Chart(salesCtx, {
+                type: 'line',
+                data: {
+                    labels: ['周一', '周二', '周三', '周四', '周五', '周六', '周日'],
+                    datasets: [{
+                        label: '销售额',
+                        data: [12000, 19000, 15000, 22000, 18000, 28000, 24000],
+                        borderColor: '#667eea',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: { responsive: true, plugins: { legend: { display: false } } }
+            });
+            
+            const categoryCtx = document.getElementById('categoryChart').getContext('2d');
+            new Chart(categoryCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['电子产品', '服装鞋帽', '食品饮料', '家居用品', '美妆护肤'],
+                    datasets: [{
+                        data: [35, 25, 20, 12, 8],
+                        backgroundColor: ['#667eea', '#764ba2', '#f093fb', '#f5576c', '#4facfe']
+                    }]
+                },
+                options: { responsive: true }
+            });
+        }
+        
+        async function logout() {
+            try {
+                await fetch('/api/logout', { method: 'POST' });
+            } catch (e) {
+                console.log('Logout error:', e);
+            } finally {
+                localStorage.removeItem('user');
+                window.location.href = '/';
+            }
+        }
+        
+        loadSummary();
+        loadAlerts();
+        initCharts();
+    </script>
+</body>
+</html>
