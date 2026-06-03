@@ -51,6 +51,16 @@ async def alerts(request: Request):
     template = env.get_template("alerts.html")
     return HTMLResponse(content=template.render(request=request))
 
+@app.get("/products", response_class=HTMLResponse)
+async def products(request: Request):
+    template = env.get_template("products.html")
+    return HTMLResponse(content=template.render(request=request))
+
+@app.get("/inventory", response_class=HTMLResponse)
+async def inventory(request: Request):
+    template = env.get_template("inventory.html")
+    return HTMLResponse(content=template.render(request=request))
+
 if __name__ == "__main__":
     uvicorn.run(
         "app.main:app",

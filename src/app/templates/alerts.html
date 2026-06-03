@@ -172,6 +172,8 @@
                 <ul>
                     <li><a href="/dashboard">数据报表</a></li>
                     <li><a href="/reports">智能报表</a></li>
+                    <li><a href="/products">商品管理</a></li>
+                    <li><a href="/inventory">库存管理</a></li>
                     <li><a href="/alerts" class="active">异常预警</a></li>
                 </ul>
             </nav>
@@ -241,13 +243,17 @@
                         <span class="type">${getAlertTypeName(alert.type)}</span>
                         <span class="severity ${alert.severity}">${getSeverityName(alert.severity)}</span>
                     </div>
-                    <div class="alert-body">${alert.message}</div>
+                    <div class="alert-body">${formatMessage(alert.message)}</div>
                     <div class="alert-footer">
                         <span class="time">${alert.created_at}</span>
                         <button class="btn btn-success" onclick="resolveAlert(${alert.id})">✅ 处理</button>
                     </div>
                 </div>
             `).join('');
+        }
+        
+        function formatMessage(message) {
+            return message.replace(/\n/g, '<br>');
         }
         
         function getAlertTypeName(type) {

@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>库存管理 - 电商后台管理系统</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Microsoft YaHei', sans-serif;
+        }
+
+        body {
+            background-color: #f5f7fa;
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            width: 220px;
+            background: linear-gradient(180deg, #1e3a5f 0%, #2d5a87 100%);
+            color: white;
+            padding: 20px 0;
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+        }
+
+        .sidebar h2 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 18px;
+            padding: 0 15px;
+        }
+
+        .sidebar ul {
+            list-style: none;
+        }
+
+        .sidebar ul li {
+            padding: 12px 20px;
+            margin: 5px 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .sidebar ul li:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .sidebar ul li.active {
+            background-color: #007bff;
+        }
+
+        .sidebar ul li a {
+            color: white;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .sidebar .logout {
+            position: absolute;
+            bottom: 30px;
+            width: 100%;
+            padding: 0 20px;
+        }
+
+        .sidebar .logout li {
+            background-color: #dc3545;
+        }
+
+        .sidebar .logout li:hover {
+            background-color: #c82333;
+        }
+
+        .main-content {
+            margin-left: 220px;
+            flex: 1;
+            padding: 20px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            color: #333;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .user-info span {
+            color: #666;
+        }
+
+        .search-bar {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            align-items: center;
+        }
+
+        .search-bar input,
+        .search-bar select {
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            width: 200px;
+        }
+
+        .search-bar button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .search-bar .btn-search {
+            background-color: #6c757d;
+            color: white;
+        }
+
+        .search-bar .btn-search:hover {
+            background-color: #5a6268;
+        }
+
+        .search-bar .btn-add {
+            background-color: #007bff;
+            color: white;
+            margin-left: auto;
+        }
+
+        .search-bar .btn-add:hover {
+            background-color: #0056b3;
+        }
+
+        .table-container {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+        }
+
+        .table-container table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .table-container th,
+        .table-container td {
+            padding: 14px 16px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+
+        .table-container th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .table-container tr:hover {
+            background-color: #f8f9fa;
+        }
+
+        .table-container .low-stock {
+            color: #dc3545;
+            font-weight: bold;
+        }
+
+        .table-container .actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .table-container .actions button {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .table-container .actions .btn-edit {
+            background-color: #ffc107;
+            color: #333;
+        }
+
+        .table-container .actions .btn-edit:hover {
+            background-color: #e0a800;
+        }
+
+        .table-container .actions .btn-delete {
+            background-color: #dc3545;
+            color: white;
+        }
+
+        .table-container .actions .btn-delete:hover {
+            background-color: #c82333;
+        }
+
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            padding: 20px;
+        }
+
+        .pagination button {
+            padding: 8px 16px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            cursor: pointer;
+            background-color: white;
+        }
+
+        .pagination button:hover:not(:disabled) {
+            background-color: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+
+        .pagination button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .pagination span {
+            padding: 8px 16px;
+        }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            background-color: white;
+            border-radius: 8px;
+            width: 450px;
+            max-width: 90%;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .modal-header {
+            padding: 15px 20px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h3 {
+            font-size: 16px;
+            color: #333;
+        }
+
+        .modal-header .close {
+            cursor: pointer;
+            font-size: 20px;
+            color: #999;
+        }
+
+        .modal-body {
+            padding: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: #333;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .modal-footer {
+            padding: 15px 20px;
+            border-top: 1px solid #eee;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        .modal-footer button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .modal-footer .btn-confirm {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .modal-footer .btn-confirm:hover {
+            background-color: #0056b3;
+        }
+
+        .modal-footer .btn-cancel {
+            background-color: #6c757d;
+            color: white;
+        }
+
+        .modal-footer .btn-cancel:hover {
+            background-color: #5a6268;
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <h2>电商后台管理系统</h2>
+        <ul>
+            <li><a href="/dashboard">📊 数据报表</a></li>
+            <li><a href="/reports">📝 智能报表</a></li>
+            <li><a href="/products">📦 商品管理</a></li>
+            <li class="active"><a href="/inventory">📭 库存管理</a></li>
+            <li><a href="/alerts">⚠️ 异常预警</a></li>
+        </ul>
+        <div class="logout">
+            <ul>
+                <li><a href="/">🔓 退出登录</a></li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="header">
+            <h1>库存管理</h1>
+            <div class="user-info">
+                <span id="username">用户</span>
+            </div>
+        </div>
+
+        <div class="search-bar">
+            <div>
+                <input type="text" id="searchName" placeholder="库存名称">
+            </div>
+            <div>
+                <select id="searchCategory">
+                    <option value="">请选择库存类别</option>
+                </select>
+            </div>
+            <button class="btn-search" onclick="searchInventory()">查询</button>
+            <button class="btn-add" onclick="openAddModal()">+ 新增库存</button>
+        </div>
+
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>库存编号</th>
+                        <th>库存名称</th>
+                        <th>库存类别</th>
+                        <th>库存数量</th>
+                        <th>预警阈值</th>
+                        <th>最后更新时间</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="inventoryTableBody">
+                </tbody>
+            </table>
+        </div>
+
+        <div class="pagination">
+            <button id="prevBtn" onclick="prevPage()" disabled>上一页</button>
+            <span id="pageInfo">第 1 页 / 共 1 页</span>
+            <button id="nextBtn" onclick="nextPage()" disabled>下一页</button>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="modalTitle">新增库存</h3>
+                <span class="close" onclick="closeModal()">×</span>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editId">
+                <div class="form-group">
+                    <label>库存名称</label>
+                    <input type="text" id="stockName" placeholder="请输入库存名称">
+                </div>
+                <div class="form-group">
+                    <label>库存类别</label>
+                    <select id="stockCategory">
+                        <option value="">请选择库存类别</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>库存数量</label>
+                    <input type="number" id="stockQuantity" placeholder="请输入库存数量" min="0">
+                </div>
+                <div class="form-group">
+                    <label>预警阈值</label>
+                    <input type="number" id="threshold" placeholder="请输入预警阈值" min="0">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancel" onclick="closeModal()">退出</button>
+                <button class="btn-confirm" onclick="saveInventory()">完成</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentPage = 1;
+        let totalPages = 1;
+        let editingInventory = null;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            loadCategories();
+            loadInventory();
+        });
+
+        function loadCategories() {
+            fetch('/api/inventory/categories')
+                .then(res => res.json())
+                .then(data => {
+                    const searchSelect = document.getElementById('searchCategory');
+                    const modalSelect = document.getElementById('stockCategory');
+                    
+                    data.forEach(cat => {
+                        const searchOption = document.createElement('option');
+                        searchOption.value = cat;
+                        searchOption.textContent = cat;
+                        searchSelect.appendChild(searchOption);
+                        
+                        const modalOption = document.createElement('option');
+                        modalOption.value = cat;
+                        modalOption.textContent = cat;
+                        modalSelect.appendChild(modalOption);
+                    });
+                });
+        }
+
+        function loadInventory(page = 1) {
+            const name = document.getElementById('searchName').value;
+            const category = document.getElementById('searchCategory').value;
+            
+            fetch(`/api/inventory?page=${page}&name=${encodeURIComponent(name)}&category=${encodeURIComponent(category)}`)
+                .then(res => res.json())
+                .then(data => {
+                    const tbody = document.getElementById('inventoryTableBody');
+                    tbody.innerHTML = '';
+                    
+                    data.items.forEach(item => {
+                        const row = document.createElement('tr');
+                        const isLowStock = item.stock_quantity <= (item.threshold || 10);
+                        row.innerHTML = `
+                            <td>${item.stock_id}</td>
+                            <td>${item.stock_name}</td>
+                            <td>${item.stock_category}</td>
+                            <td class="${isLowStock ? 'low-stock' : ''}">${item.stock_quantity}</td>
+                            <td>${item.threshold || 10}</td>
+                            <td>${formatDate(item.last_updated)}</td>
+                            <td class="actions">
+                                <button class="btn-edit" onclick="editInventory(${item.id})">修改</button>
+                                <button class="btn-delete" onclick="deleteInventory(${item.id})">删除</button>
+                            </td>
+                        `;
+                        tbody.appendChild(row);
+                    });
+                    
+                    currentPage = data.page;
+                    totalPages = data.total_pages;
+                    updatePagination();
+                });
+        }
+
+        function updatePagination() {
+            document.getElementById('pageInfo').textContent = `第 ${currentPage} 页 / 共 ${totalPages} 页`;
+            document.getElementById('prevBtn').disabled = currentPage === 1;
+            document.getElementById('nextBtn').disabled = currentPage >= totalPages;
+        }
+
+        function prevPage() {
+            if (currentPage > 1) {
+                loadInventory(currentPage - 1);
+            }
+        }
+
+        function nextPage() {
+            if (currentPage < totalPages) {
+                loadInventory(currentPage + 1);
+            }
+        }
+
+        function searchInventory() {
+            loadInventory(1);
+        }
+
+        function openAddModal() {
+            editingInventory = null;
+            document.getElementById('modalTitle').textContent = '新增库存';
+            document.getElementById('editId').value = '';
+            document.getElementById('stockName').value = '';
+            document.getElementById('stockCategory').value = '';
+            document.getElementById('stockQuantity').value = '';
+            document.getElementById('threshold').value = '10';
+            document.getElementById('modalOverlay').classList.add('active');
+        }
+
+        function editInventory(id) {
+            fetch(`/api/inventory/${id}`)
+                .then(res => res.json())
+                .then(item => {
+                    editingInventory = item;
+                    document.getElementById('modalTitle').textContent = '编辑库存';
+                    document.getElementById('editId').value = item.id;
+                    document.getElementById('stockName').value = item.stock_name;
+                    document.getElementById('stockCategory').value = item.stock_category;
+                    document.getElementById('stockQuantity').value = item.stock_quantity;
+                    document.getElementById('threshold').value = item.threshold;
+                    document.getElementById('modalOverlay').classList.add('active');
+                });
+        }
+
+        function closeModal() {
+            document.getElementById('modalOverlay').classList.remove('active');
+        }
+
+        function saveInventory() {
+            const id = document.getElementById('editId').value;
+            
+            const data = {
+                stock_name: document.getElementById('stockName').value,
+                stock_category: document.getElementById('stockCategory').value,
+                stock_quantity: parseInt(document.getElementById('stockQuantity').value),
+                threshold: parseInt(document.getElementById('threshold').value) || 10
+            };
+
+            const url = id ? `/api/inventory/${id}` : '/api/inventory';
+            const method = id ? 'PUT' : 'POST';
+
+            fetch(url, {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            })
+            .then(res => res.json())
+            .then(result => {
+                if (result.success) {
+                    alert('保存成功');
+                    closeModal();
+                    loadInventory(currentPage);
+                } else {
+                    alert(result.message);
+                }
+            });
+        }
+
+        function deleteInventory(id) {
+            if (confirm('确定要删除该库存吗？')) {
+                fetch(`/api/inventory/${id}`, { method: 'DELETE' })
+                    .then(res => res.json())
+                    .then(result => {
+                        if (result.success) {
+                            alert('删除成功');
+                            loadInventory(currentPage);
+                        } else {
+                            alert(result.message);
+                        }
+                    });
+            }
+        }
+
+        function formatDate(dateStr) {
+            const date = new Date(dateStr);
+            return date.toLocaleString('zh-CN', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+    </script>
+</body>
+</html>

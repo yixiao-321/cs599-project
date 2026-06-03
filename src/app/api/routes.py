@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
-from app.models.database import get_db, SalesRecord, InventoryRecord, CustomerRecord, AlertRecord, User
+from app.models.database import get_db, SalesRecord, InventoryRecord, CustomerRecord, AlertRecord, User, ProductRecord
+from datetime import datetime
 from app.services.user_service import verify_password, init_default_users
 from app.agent.sales_analyzer import SalesAnalyzer
 from app.agent.anomaly_detector import AnomalyDetector
@@ -107,6 +108,13 @@ def resolve_alert(alert_id: int, db: Session = Depends(get_db)):
         return {"message": "Alert resolved successfully"}
     except HTTPException as e:
         raise e
+
+@router.delete("/api/alerts")
+def clear_all_alerts(db: Session = Depends(get_db)):
+    try:
+        db.query(AlertRecord).delete()
+        db.commit()
+        return {"message": "All alerts cleared successfully"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -194,3 +202,286 @@ async def chat_stream(request: ChatRequest):
         yield {"chunk": "", "done": True}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+class InventoryCreate(BaseModel):
+    stock_name: str
+    stock_category: str
+    stock_quantity: int
+    threshold: int = 10
+
+class InventoryUpdate(BaseModel):
+    stock_name: str
+    stock_category: str
+    stock_quantity: int
+    threshold: int
+
+class ProductCreate(BaseModel):
+    product_name: str
+    unit_price: float
+    discount_strategy: str
+    stock_id: str
+    category: str
+
+class ProductUpdate(BaseModel):
+    product_name: str
+    unit_price: float
+    discount_strategy: str
+
+class ProductStatusUpdate(BaseModel):
+    status: str
+
+def get_category_prefix(category: str) -> str:
+    pinyin_map = {
+        '食品': 'SP', '饮料': 'YL', '日用品': 'RY', '电子产品': 'DZ',
+        '服装': 'FZ', '其他': 'QT', '水果': 'SG', '蔬菜': 'SC',
+        '生鲜': 'SX', '零食': 'LS', '酒水': 'JS', '化妆品': 'HZ'
+    }
+    return pinyin_map.get(category, 'QT')
+
+@router.get("/api/inventory")
+def get_inventory(page: int = 1, name: str = "", category: str = "", db: Session = Depends(get_db)):
+    query = db.query(InventoryRecord)
+    if name:
+        query = query.filter(InventoryRecord.stock_name.like(f"%{name}%"))
+    if category:
+        query = query.filter(InventoryRecord.stock_category == category)
+    
+    query = query.order_by(InventoryRecord.last_updated.desc())
+    
+    total_items = query.count()
+    page_size = 10
+    total_pages = (total_items + page_size - 1) // page_size
+    items = query.offset((page - 1) * page_size).limit(page_size).all()
+    
+    return {
+        "items": [
+            {
+                "id": item.id,
+                "stock_id": item.stock_id,
+                "stock_name": item.stock_name,
+                "stock_category": item.stock_category,
+                "stock_quantity": item.stock_quantity,
+                "threshold": item.threshold,
+                "last_updated": item.last_updated.isoformat()
+            } for item in items
+        ],
+        "page": page,
+        "total_pages": total_pages,
+        "total_items": total_items
+    }
+
+@router.get("/api/inventory/categories")
+def get_inventory_categories(db: Session = Depends(get_db)):
+    categories = db.query(InventoryRecord.stock_category).distinct().all()
+    return [cat[0] for cat in categories]
+
+@router.get("/api/inventory/names")
+def get_inventory_names(db: Session = Depends(get_db)):
+    items = db.query(InventoryRecord.stock_id, InventoryRecord.stock_name, InventoryRecord.stock_category).all()
+    return [
+        {"stock_id": item[0], "stock_name": item[1], "stock_category": item[2]}
+        for item in items
+    ]
+
+@router.get("/api/inventory/{id}")
+def get_inventory_item(id: int, db: Session = Depends(get_db)):
+    item = db.query(InventoryRecord).filter(InventoryRecord.id == id).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="库存不存在")
+    return {
+        "id": item.id,
+        "stock_id": item.stock_id,
+        "stock_name": item.stock_name,
+        "stock_category": item.stock_category,
+        "stock_quantity": item.stock_quantity,
+        "threshold": item.threshold,
+        "last_updated": item.last_updated.isoformat()
+    }
+
+@router.post("/api/inventory")
+def create_inventory(data: InventoryCreate, db: Session = Depends(get_db)):
+    if not data.stock_name or not data.stock_category:
+        return {"success": False, "message": "库存名称和类别不能为空"}
+    
+    category_prefix = get_category_prefix(data.stock_category)
+    current_month = datetime.now().strftime("%Y%m")
+    
+    existing_count = db.query(InventoryRecord).filter(
+        InventoryRecord.stock_id.like(f"{category_prefix}{current_month}%")
+    ).count()
+    
+    stock_id = f"{category_prefix}{current_month}{str(existing_count).zfill(2)}"
+    
+    existing_item = db.query(InventoryRecord).filter(InventoryRecord.stock_name == data.stock_name).first()
+    if existing_item:
+        return {"success": False, "message": "库存名称已存在"}
+    
+    new_item = InventoryRecord(
+        stock_id=stock_id,
+        stock_name=data.stock_name,
+        stock_category=data.stock_category,
+        stock_quantity=data.stock_quantity,
+        threshold=data.threshold,
+        last_updated=datetime.now()
+    )
+    
+    db.add(new_item)
+    db.commit()
+    db.refresh(new_item)
+    
+    return {"success": True, "message": "新增成功", "stock_id": stock_id}
+
+@router.put("/api/inventory/{id}")
+def update_inventory(id: int, data: InventoryUpdate, db: Session = Depends(get_db)):
+    item = db.query(InventoryRecord).filter(InventoryRecord.id == id).first()
+    if not item:
+        return {"success": False, "message": "库存不存在"}
+    
+    item.stock_name = data.stock_name
+    item.stock_category = data.stock_category
+    item.stock_quantity = data.stock_quantity
+    item.threshold = data.threshold
+    item.last_updated = datetime.now()
+    
+    db.commit()
+    db.refresh(item)
+    
+    return {"success": True, "message": "更新成功"}
+
+@router.delete("/api/inventory/{id}")
+def delete_inventory(id: int, db: Session = Depends(get_db)):
+    item = db.query(InventoryRecord).filter(InventoryRecord.id == id).first()
+    if not item:
+        return {"success": False, "message": "库存不存在"}
+    
+    db.delete(item)
+    db.commit()
+    
+    return {"success": True, "message": "删除成功"}
+
+@router.get("/api/products")
+def get_products(page: int = 1, name: str = "", category: str = "", db: Session = Depends(get_db)):
+    query = db.query(ProductRecord)
+    if name:
+        query = query.filter(ProductRecord.product_name.like(f"%{name}%"))
+    if category:
+        query = query.filter(ProductRecord.product_category == category)
+    
+    query = query.order_by(ProductRecord.last_updated.desc())
+    
+    total_items = query.count()
+    page_size = 10
+    total_pages = (total_items + page_size - 1) // page_size
+    items = query.offset((page - 1) * page_size).limit(page_size).all()
+    
+    return {
+        "items": [
+            {
+                "id": item.id,
+                "product_id": item.product_id,
+                "product_name": item.product_name,
+                "product_category": item.product_category,
+                "unit_price": item.unit_price,
+                "discount_strategy": item.discount_strategy,
+                "status": item.status,
+                "last_shelf_time": item.last_shelf_time.isoformat() if item.last_shelf_time else None,
+                "last_updated": item.last_updated.isoformat()
+            } for item in items
+        ],
+        "page": page,
+        "total_pages": total_pages,
+        "total_items": total_items
+    }
+
+@router.get("/api/products/{id}")
+def get_product(id: int, db: Session = Depends(get_db)):
+    product = db.query(ProductRecord).filter(ProductRecord.id == id).first()
+    if not product:
+        raise HTTPException(status_code=404, detail="商品不存在")
+    return {
+        "id": product.id,
+        "product_id": product.product_id,
+        "product_name": product.product_name,
+        "product_category": product.product_category,
+        "unit_price": product.unit_price,
+        "discount_strategy": product.discount_strategy,
+        "status": product.status,
+        "last_shelf_time": product.last_shelf_time.isoformat() if product.last_shelf_time else None,
+        "last_updated": product.last_updated.isoformat()
+    }
+
+@router.post("/api/products")
+def create_product(data: ProductCreate, db: Session = Depends(get_db)):
+    if not data.product_name or not data.unit_price:
+        return {"success": False, "message": "商品名称和单价不能为空"}
+    
+    existing_product = db.query(ProductRecord).filter(ProductRecord.product_name == data.product_name).first()
+    if existing_product:
+        return {"success": False, "message": "商品名称已存在"}
+    
+    new_product = ProductRecord(
+        product_id=data.stock_id,
+        product_name=data.product_name,
+        product_category=data.category,
+        unit_price=data.unit_price,
+        discount_strategy=data.discount_strategy,
+        status="下架",
+        last_shelf_time=None,
+        last_updated=datetime.now()
+    )
+    
+    db.add(new_product)
+    db.commit()
+    db.refresh(new_product)
+    
+    return {"success": True, "message": "新增成功"}
+
+@router.put("/api/products/{id}")
+def update_product(id: int, data: ProductUpdate, db: Session = Depends(get_db)):
+    product = db.query(ProductRecord).filter(ProductRecord.id == id).first()
+    if not product:
+        return {"success": False, "message": "商品不存在"}
+    
+    product.product_name = data.product_name
+    product.unit_price = data.unit_price
+    product.discount_strategy = data.discount_strategy
+    product.last_updated = datetime.now()
+    
+    db.commit()
+    db.refresh(product)
+    
+    return {"success": True, "message": "更新成功"}
+
+@router.delete("/api/products/{id}")
+def delete_product(id: int, db: Session = Depends(get_db)):
+    product = db.query(ProductRecord).filter(ProductRecord.id == id).first()
+    if not product:
+        return {"success": False, "message": "商品不存在"}
+    
+    db.delete(product)
+    db.commit()
+    
+    return {"success": True, "message": "删除成功"}
+
+@router.put("/api/products/{id}/status")
+def update_product_status(id: int, data: ProductStatusUpdate, db: Session = Depends(get_db)):
+    product = db.query(ProductRecord).filter(ProductRecord.id == id).first()
+    if not product:
+        return {"success": False, "message": "商品不存在"}
+    
+    old_status = product.status
+    product.status = data.status
+    product.last_updated = datetime.now()
+    
+    if data.status == "上架" and old_status == "下架":
+        product.last_shelf_time = datetime.now()
+    
+    db.commit()
+    db.refresh(product)
+    
+    return {"success": True, "message": "状态更新成功"}
+
+@router.get("/api/categories")
+def get_categories(db: Session = Depends(get_db)):
+    categories = db.query(ProductRecord.product_category).distinct().all()
+    return [cat[0] for cat in categories]

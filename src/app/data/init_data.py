@@ -1,8 +1,17 @@
 from sqlalchemy.orm import Session
-from app.models.database import SessionLocal, SalesRecord, InventoryRecord, CustomerRecord
+from app.models.database import SessionLocal, SalesRecord, InventoryRecord, CustomerRecord, ProductRecord
 from datetime import datetime, timedelta
 import random
 import uuid
+
+def get_category_prefix(category: str) -> str:
+    pinyin_map = {
+        '食品': 'SP', '饮料': 'YL', '日用品': 'RY', '电子产品': 'DZ',
+        '服装': 'FZ', '其他': 'QT', '水果': 'SG', '蔬菜': 'SC',
+        '生鲜': 'SX', '零食': 'LS', '酒水': 'JS', '化妆品': 'HZ',
+        '食品饮料': 'SP', '服装鞋帽': 'FZ', '家居用品': 'RY', '美妆护肤': 'HZ'
+    }
+    return pinyin_map.get(category, 'QT')
 
 def init_sample_data():
     db = SessionLocal()
@@ -38,15 +47,22 @@ def init_sample_data():
     try:
         if db.query(InventoryRecord).count() == 0:
             for category, product_list in products.items():
+                count = 0
                 for product in product_list:
+                    category_prefix = get_category_prefix(category)
+                    current_month = datetime.now().strftime("%Y%m")
+                    stock_id = f"{category_prefix}{current_month}{str(count).zfill(2)}"
+                    
                     inventory = InventoryRecord(
-                        product_id=f"P{random.randint(1000, 9999)}",
-                        product_name=product,
-                        category=category,
+                        stock_id=stock_id,
+                        stock_name=product,
+                        stock_category=category,
                         stock_quantity=random.randint(10, 500),
-                        threshold=50
+                        threshold=50,
+                        last_updated=datetime.now()
                     )
                     db.add(inventory)
+                    count += 1
         db.commit()
         print("Inventory data initialized")
     except Exception as e:
@@ -58,28 +74,31 @@ def init_sample_data():
             customers = db.query(CustomerRecord).all()
             inventory = db.query(InventoryRecord).all()
             
-            for day in range(30):
-                num_sales = random.randint(5, 30)
-                for _ in range(num_sales):
-                    product = random.choice(inventory)
-                    customer = random.choice(customers)
-                    quantity = random.randint(1, 5)
-                    unit_price = random.uniform(20, 2000)
-                    
-                    sale = SalesRecord(
-                        order_id=f"ORD{datetime.utcnow().strftime('%Y%m%d')}{str(uuid.uuid4())[:8]}",
-                        product_name=product.product_name,
-                        category=product.category,
-                        quantity=quantity,
-                        unit_price=unit_price,
-                        total_amount=quantity * unit_price,
-                        customer_id=customer.customer_id,
-                        sale_date=datetime.utcnow() - timedelta(days=day, hours=random.randint(0, 23)),
-                        status="completed"
-                    )
-                    db.add(sale)
-        db.commit()
-        print("Sales data initialized")
+            if not inventory:
+                print("No inventory data available for sales initialization")
+            else:
+                for day in range(30):
+                    num_sales = random.randint(5, 30)
+                    for _ in range(num_sales):
+                        product = random.choice(inventory)
+                        customer = random.choice(customers)
+                        quantity = random.randint(1, 5)
+                        unit_price = random.uniform(20, 2000)
+                        
+                        sale = SalesRecord(
+                            order_id=f"ORD{datetime.utcnow().strftime('%Y%m%d')}{str(uuid.uuid4())[:8]}",
+                            product_name=product.stock_name,
+                            category=product.stock_category,
+                            quantity=quantity,
+                            unit_price=unit_price,
+                            total_amount=quantity * unit_price,
+                            customer_id=customer.customer_id,
+                            sale_date=datetime.utcnow() - timedelta(days=day, hours=random.randint(0, 23)),
+                            status="completed"
+                        )
+                        db.add(sale)
+            db.commit()
+            print("Sales data initialized")
     except Exception as e:
         print(f"Error initializing sales: {e}")
         db.rollback()

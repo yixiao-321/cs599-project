@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>商品管理 - 电商后台管理系统</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Microsoft YaHei', sans-serif;
+        }
+
+        body {
+            background-color: #f5f7fa;
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            width: 220px;
+            background: linear-gradient(180deg, #1e3a5f 0%, #2d5a87 100%);
+            color: white;
+            padding: 20px 0;
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+        }
+
+        .sidebar h2 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 18px;
+            padding: 0 15px;
+        }
+
+        .sidebar ul {
+            list-style: none;
+        }
+
+        .sidebar ul li {
+            padding: 12px 20px;
+            margin: 5px 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .sidebar ul li:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .sidebar ul li.active {
+            background-color: #007bff;
+        }
+
+        .sidebar ul li a {
+            color: white;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .sidebar .logout {
+            position: absolute;
+            bottom: 30px;
+            width: 100%;
+            padding: 0 20px;
+        }
+
+        .sidebar .logout li {
+            background-color: #dc3545;
+        }
+
+        .sidebar .logout li:hover {
+            background-color: #c82333;
+        }
+
+        .main-content {
+            margin-left: 220px;
+            flex: 1;
+            padding: 20px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            color: #333;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .user-info span {
+            color: #666;
+        }
+
+        .search-bar {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            align-items: center;
+        }
+
+        .search-bar input,
+        .search-bar select {
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            width: 200px;
+        }
+
+        .search-bar button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .search-bar .btn-search {
+            background-color: #6c757d;
+            color: white;
+        }
+
+        .search-bar .btn-search:hover {
+            background-color: #5a6268;
+        }
+
+        .search-bar .btn-add {
+            background-color: #007bff;
+            color: white;
+            margin-left: auto;
+        }
+
+        .search-bar .btn-add:hover {
+            background-color: #0056b3;
+        }
+
+        .table-container {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+        }
+
+        .table-container table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .table-container th,
+        .table-container td {
+            padding: 14px 16px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+
+        .table-container th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .table-container tr:hover {
+            background-color: #f8f9fa;
+        }
+
+        .table-container .status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+        }
+
+        .table-container .status.shelf {
+            background-color: #d4edda;
+            color: #155724;
+        }
+
+        .table-container .status.unshelf {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+
+        .table-container .actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .table-container .actions button {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .table-container .actions .btn-edit {
+            background-color: #ffc107;
+            color: #333;
+        }
+
+        .table-container .actions .btn-edit:hover {
+            background-color: #e0a800;
+        }
+
+        .table-container .actions .btn-delete {
+            background-color: #dc3545;
+            color: white;
+        }
+
+        .table-container .actions .btn-delete:hover {
+            background-color: #c82333;
+        }
+
+        .table-container .actions .btn-shelf,
+        .table-container .actions .btn-unshelf {
+            background-color: #28a745;
+            color: white;
+        }
+
+        .table-container .actions .btn-unshelf {
+            background-color: #6c757d;
+        }
+
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            padding: 20px;
+        }
+
+        .pagination button {
+            padding: 8px 16px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            cursor: pointer;
+            background-color: white;
+        }
+
+        .pagination button:hover:not(:disabled) {
+            background-color: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+
+        .pagination button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .pagination span {
+            padding: 8px 16px;
+        }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            background-color: white;
+            border-radius: 8px;
+            width: 450px;
+            max-width: 90%;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .modal-header {
+            padding: 15px 20px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h3 {
+            font-size: 16px;
+            color: #333;
+        }
+
+        .modal-header .close {
+            cursor: pointer;
+            font-size: 20px;
+            color: #999;
+        }
+
+        .modal-body {
+            padding: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: #333;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .modal-footer {
+            padding: 15px 20px;
+            border-top: 1px solid #eee;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        .modal-footer button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .modal-footer .btn-confirm {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .modal-footer .btn-confirm:hover {
+            background-color: #0056b3;
+        }
+
+        .modal-footer .btn-cancel {
+            background-color: #6c757d;
+            color: white;
+        }
+
+        .modal-footer .btn-cancel:hover {
+            background-color: #5a6268;
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <h2>电商后台管理系统</h2>
+        <ul>
+            <li><a href="/dashboard">📊 数据报表</a></li>
+            <li><a href="/reports">📝 智能报表</a></li>
+            <li class="active"><a href="/products">📦 商品管理</a></li>
+            <li><a href="/inventory">📭 库存管理</a></li>
+            <li><a href="/alerts">⚠️ 异常预警</a></li>
+        </ul>
+        <div class="logout">
+            <ul>
+                <li><a href="/">🔓 退出登录</a></li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="header">
+            <h1>商品管理</h1>
+            <div class="user-info">
+                <span id="username">用户</span>
+            </div>
+        </div>
+
+        <div class="search-bar">
+            <div>
+                <input type="text" id="searchName" placeholder="商品名称">
+            </div>
+            <div>
+                <select id="searchCategory">
+                    <option value="">请选择商品类别</option>
+                </select>
+            </div>
+            <button class="btn-search" onclick="searchProducts()">查询</button>
+            <button class="btn-add" onclick="openAddModal()">+ 新增商品</button>
+        </div>
+
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>商品编号</th>
+                        <th>商品名称</th>
+                        <th>商品类别</th>
+                        <th>单价</th>
+                        <th>优惠策略</th>
+                        <th>商品状态</th>
+                        <th>最后上架时间</th>
+                        <th>最后更新时间</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="productTableBody">
+                </tbody>
+            </table>
+        </div>
+
+        <div class="pagination">
+            <button id="prevBtn" onclick="prevPage()" disabled>上一页</button>
+            <span id="pageInfo">第 1 页 / 共 1 页</span>
+            <button id="nextBtn" onclick="nextPage()" disabled>下一页</button>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="modalTitle">新增商品</h3>
+                <span class="close" onclick="closeModal()">×</span>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editId">
+                <div class="form-group">
+                    <label>商品名称</label>
+                    <select id="productName">
+                        <option value="">请选择商品名称（从库存中选择）</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>单价</label>
+                    <input type="number" id="unitPrice" placeholder="请输入单价" step="0.01">
+                </div>
+                <div class="form-group">
+                    <label>优惠策略</label>
+                    <select id="discountStrategy">
+                        <option value="">请选择优惠策略</option>
+                        <option value="九折优惠">九折优惠</option>
+                        <option value="八折优惠">八折优惠</option>
+                        <option value="买一送一">买一送一</option>
+                        <option value="第二份半价">第二份半价</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancel" onclick="closeModal()">退出</button>
+                <button class="btn-confirm" onclick="saveProduct()">完成</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentPage = 1;
+        let totalPages = 1;
+        let editingProduct = null;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            loadCategories();
+            loadInventoryNames();
+            loadProducts();
+        });
+
+        function loadCategories() {
+            fetch('/api/categories')
+                .then(res => res.json())
+                .then(data => {
+                    const select = document.getElementById('searchCategory');
+                    data.forEach(cat => {
+                        const option = document.createElement('option');
+                        option.value = cat;
+                        option.textContent = cat;
+                        select.appendChild(option);
+                    });
+                });
+        }
+
+        function loadInventoryNames() {
+            fetch('/api/inventory/names')
+                .then(res => res.json())
+                .then(data => {
+                    const select = document.getElementById('productName');
+                    select.innerHTML = '<option value="">请选择商品名称（从库存中选择）</option>';
+                    data.forEach(item => {
+                        const option = document.createElement('option');
+                        option.value = item.stock_name;
+                        option.textContent = item.stock_name;
+                        option.setAttribute('data-category', item.stock_category);
+                        option.setAttribute('data-stock-id', item.stock_id);
+                        select.appendChild(option);
+                    });
+                })
+                .catch(err => {
+                    console.error('Error loading inventory names:', err);
+                });
+        }
+
+        function loadProducts(page = 1) {
+            const name = document.getElementById('searchName').value;
+            const category = document.getElementById('searchCategory').value;
+            
+            fetch(`/api/products?page=${page}&name=${encodeURIComponent(name)}&category=${encodeURIComponent(category)}`)
+                .then(res => res.json())
+                .then(data => {
+                    const tbody = document.getElementById('productTableBody');
+                    tbody.innerHTML = '';
+                    
+                    data.items.forEach(product => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${product.product_id}</td>
+                            <td>${product.product_name}</td>
+                            <td>${product.product_category}</td>
+                            <td>¥${product.unit_price.toFixed(2)}</td>
+                            <td>${product.discount_strategy || '-'}</td>
+                            <td><span class="status ${product.status === '上架' ? 'shelf' : 'unshelf'}">${product.status}</span></td>
+                            <td>${product.last_shelf_time ? formatDate(product.last_shelf_time) : '-'}</td>
+                            <td>${formatDate(product.last_updated)}</td>
+                            <td class="actions">
+                                <button class="btn-edit" onclick="editProduct(${product.id})">修改</button>
+                                <button class="btn-delete" onclick="deleteProduct(${product.id})">删除</button>
+                                <button class="btn-${product.status === '上架' ? 'unshelf' : 'shelf'}" onclick="toggleShelf(${product.id}, '${product.status}')">${product.status === '上架' ? '下架' : '上架'}</button>
+                            </td>
+                        `;
+                        tbody.appendChild(row);
+                    });
+                    
+                    currentPage = data.page;
+                    totalPages = data.total_pages;
+                    updatePagination();
+                });
+        }
+
+        function updatePagination() {
+            document.getElementById('pageInfo').textContent = `第 ${currentPage} 页 / 共 ${totalPages} 页`;
+            document.getElementById('prevBtn').disabled = currentPage === 1;
+            document.getElementById('nextBtn').disabled = currentPage >= totalPages;
+        }
+
+        function prevPage() {
+            if (currentPage > 1) {
+                loadProducts(currentPage - 1);
+            }
+        }
+
+        function nextPage() {
+            if (currentPage < totalPages) {
+                loadProducts(currentPage + 1);
+            }
+        }
+
+        function searchProducts() {
+            loadProducts(1);
+        }
+
+        function openAddModal() {
+            editingProduct = null;
+            document.getElementById('modalTitle').textContent = '新增商品';
+            document.getElementById('editId').value = '';
+            document.getElementById('productName').value = '';
+            document.getElementById('unitPrice').value = '';
+            document.getElementById('discountStrategy').value = '';
+            document.getElementById('modalOverlay').classList.add('active');
+        }
+
+        function editProduct(id) {
+            fetch(`/api/products/${id}`)
+                .then(res => res.json())
+                .then(product => {
+                    editingProduct = product;
+                    document.getElementById('modalTitle').textContent = '编辑商品';
+                    document.getElementById('editId').value = product.id;
+                    document.getElementById('productName').value = product.product_name;
+                    document.getElementById('unitPrice').value = product.unit_price;
+                    document.getElementById('discountStrategy').value = product.discount_strategy;
+                    document.getElementById('modalOverlay').classList.add('active');
+                });
+        }
+
+        function closeModal() {
+            document.getElementById('modalOverlay').classList.remove('active');
+        }
+
+        function saveProduct() {
+            const id = document.getElementById('editId').value;
+            const nameSelect = document.getElementById('productName');
+            const selectedOption = nameSelect.options[nameSelect.selectedIndex];
+            const stockId = selectedOption.getAttribute('data-stock-id');
+            const category = selectedOption.getAttribute('data-category');
+            
+            const data = {
+                product_name: nameSelect.value,
+                unit_price: parseFloat(document.getElementById('unitPrice').value),
+                discount_strategy: document.getElementById('discountStrategy').value,
+                stock_id: stockId,
+                category: category
+            };
+
+            const url = id ? `/api/products/${id}` : '/api/products';
+            const method = id ? 'PUT' : 'POST';
+
+            fetch(url, {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            })
+            .then(res => res.json())
+            .then(result => {
+                if (result.success) {
+                    alert('保存成功');
+                    closeModal();
+                    loadProducts(currentPage);
+                } else {
+                    alert(result.message);
+                }
+            });
+        }
+
+        function deleteProduct(id) {
+            if (confirm('确定要删除该商品吗？')) {
+                fetch(`/api/products/${id}`, { method: 'DELETE' })
+                    .then(res => res.json())
+                    .then(result => {
+                        if (result.success) {
+                            alert('删除成功');
+                            loadProducts(currentPage);
+                        } else {
+                            alert(result.message);
+                        }
+                    });
+            }
+        }
+
+        function toggleShelf(id, status) {
+            const newStatus = status === '上架' ? '下架' : '上架';
+            fetch(`/api/products/${id}/status`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: newStatus })
+            })
+            .then(res => res.json())
+            .then(result => {
+                if (result.success) {
+                    loadProducts(currentPage);
+                } else {
+                    alert(result.message);
+                }
+            });
+        }
+
+        function formatDate(dateStr) {
+            const date = new Date(dateStr);
+            return date.toLocaleString('zh-CN', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+    </script>
+</body>
+</html>

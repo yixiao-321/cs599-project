@@ -26,11 +26,24 @@ class InventoryRecord(Base):
     __tablename__ = "inventory_records"
     
     id = Column(Integer, primary_key=True, index=True)
-    product_id = Column(String, unique=True, index=True)
-    product_name = Column(String, index=True)
-    category = Column(String, index=True)
+    stock_id = Column(String, unique=True, index=True)
+    stock_name = Column(String, index=True)
+    stock_category = Column(String, index=True)
     stock_quantity = Column(Integer)
     threshold = Column(Integer)
+    last_updated = Column(DateTime, default=datetime.utcnow)
+
+class ProductRecord(Base):
+    __tablename__ = "product_records"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    product_id = Column(String, unique=True, index=True)
+    product_name = Column(String, index=True)
+    product_category = Column(String, index=True)
+    unit_price = Column(Float)
+    discount_strategy = Column(String)
+    status = Column(String, default="下架")
+    last_shelf_time = Column(DateTime)
     last_updated = Column(DateTime, default=datetime.utcnow)
 
 class CustomerRecord(Base):
