@@ -11,6 +11,7 @@ from app.agent.visualization_agent import VisualizationAgent
 from app.agent.chat_agent import ChatAgent
 from app.workflow.workflow import workflow
 from datetime import datetime, timedelta
+import random
 
 router = APIRouter()
 
@@ -485,3 +486,337 @@ def update_product_status(id: int, data: ProductStatusUpdate, db: Session = Depe
 def get_categories(db: Session = Depends(get_db)):
     categories = db.query(ProductRecord.product_category).distinct().all()
     return [cat[0] for cat in categories]
+
+@router.post("/api/test/generate-data")
+def generate_test_data(db: Session = Depends(get_db)):
+    try:
+        today = datetime.now()
+        categories = ["电子产品", "服装", "食品", "日用品", "饮料"]
+        product_names = {
+            "电子产品": ["蓝牙耳机", "手机壳", "充电宝", "数据线", "充电器"],
+            "服装": ["T恤", "牛仔裤", "运动鞋", "外套", "帽子"],
+            "食品": ["薯片", "巧克力", "饼干", "坚果", "糖果"],
+            "日用品": ["纸巾", "洗衣液", "洗发水", "牙膏", "毛巾"],
+            "饮料": ["可乐", "果汁", "矿泉水", "咖啡", "茶"]
+        }
+        
+        created_count = 0
+        
+        for category in categories:
+            for product_name in product_names[category]:
+                for _ in range(3):
+                    sale_time = today.replace(
+                        hour=random.randint(9, 21),
+                        minute=random.randint(0, 59),
+                        second=random.randint(0, 59)
+                    )
+                    unit_price = round(random.uniform(10, 500), 2)
+                    quantity = random.randint(1, 10)
+                    
+                    sale = SalesRecord(
+                        order_id=f"ORD{today.strftime('%Y%m%d')}{str(random.randint(1000, 9999))}",
+                        sale_date=sale_time,
+                        product_name=product_name,
+                        category=category,
+                        unit_price=unit_price,
+                        quantity=quantity,
+                        total_amount=unit_price * quantity,
+                        customer_id=f"C{random.randint(1000, 9999)}",
+                        status="completed"
+                    )
+                    db.add(sale)
+                    created_count += 1
+        
+        db.commit()
+        
+        return {"success": True, "message": f"成功生成 {created_count} 条当日销售数据"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/api/test/generate-inventory")
+def generate_test_inventory(db: Session = Depends(get_db)):
+    try:
+        categories = ["电子产品", "服装", "食品", "日用品", "饮料"]
+        product_names = {
+            "电子产品": ["蓝牙耳机", "手机壳", "充电宝", "数据线", "充电器"],
+            "服装": ["T恤", "牛仔裤", "运动鞋", "外套", "帽子"],
+            "食品": ["薯片", "巧克力", "饼干", "坚果", "糖果"],
+            "日用品": ["纸巾", "洗衣液", "洗发水", "牙膏", "毛巾"],
+            "饮料": ["可乐", "果汁", "矿泉水", "咖啡", "茶"]
+        }
+        
+        created_count = 0
+        
+        for category in categories:
+            for product_name in product_names[category]:
+                existing = db.query(InventoryRecord).filter(
+                    InventoryRecord.stock_name == product_name
+                ).first()
+                
+                if not existing:
+                    category_prefix = get_category_prefix(category)
+                    current_month = datetime.now().strftime("%Y%m")
+                    existing_count = db.query(InventoryRecord).filter(
+                        InventoryRecord.stock_id.like(f"{category_prefix}{current_month}%")
+                    ).count()
+                    stock_id = f"{category_prefix}{current_month}{str(existing_count).zfill(2)}"
+                    
+                    inventory = InventoryRecord(
+                        stock_id=stock_id,
+                        stock_name=product_name,
+                        stock_category=category,
+                        stock_quantity=random.randint(0, 50),
+                        threshold=10,
+                        last_updated=datetime.now()
+                    )
+                    db.add(inventory)
+                    created_count += 1
+        
+        db.commit()
+        
+        return {"success": True, "message": f"成功生成 {created_count} 条库存数据"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/api/test/clear-sales")
+def clear_test_sales(db: Session = Depends(get_db)):
+    try:
+        today = datetime.now().date()
+        count = db.query(SalesRecord).filter(
+            SalesRecord.sale_date >= today
+        ).delete()
+        db.commit()
+        return {"success": True, "message": f"成功删除 {count} 条当日销售数据"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/api/reports/traditional/daily")
+def get_traditional_daily_report(db: Session = Depends(get_db)):
+    try:
+        today = datetime.now().date()
+        yesterday = today - timedelta(days=1)
+        
+        today_sales = db.query(SalesRecord).filter(
+            SalesRecord.sale_date >= today,
+            SalesRecord.sale_date < today + timedelta(days=1)
+        ).all()
+        
+        yesterday_sales = db.query(SalesRecord).filter(
+            SalesRecord.sale_date >= yesterday,
+            SalesRecord.sale_date < today
+        ).all()
+        
+        total_sales = sum(s.total_amount for s in today_sales)
+        total_orders = len(today_sales)
+        avg_order_value = total_sales / total_orders if total_orders > 0 else 0
+        
+        customers = db.query(CustomerRecord).all()
+        total_customers = len(customers)
+        new_customers = len([c for c in customers if c.registration_date.date() == today])
+        active_customers = len([c for c in customers if c.is_active])
+        
+        category_sales = {}
+        for sale in today_sales:
+            category = sale.category
+            if category not in category_sales:
+                category_sales[category] = {"sales": 0, "orders": 0}
+            category_sales[category]["sales"] += sale.total_amount
+            category_sales[category]["orders"] += 1
+        
+        category_data = []
+        for cat, data in category_sales.items():
+            percentage = (data["sales"] / total_sales * 100) if total_sales > 0 else 0
+            category_data.append({
+                "category": cat,
+                "sales": data["sales"],
+                "orders": data["orders"],
+                "percentage": round(percentage, 1)
+            })
+        
+        daily_data = []
+        for i in range(6, -1, -1):
+            date = today - timedelta(days=i)
+            day_sales = db.query(SalesRecord).filter(
+                SalesRecord.sale_date >= date,
+                SalesRecord.sale_date < date + timedelta(days=1)
+            ).all()
+            daily_data.append({
+                "date": date.strftime("%m-%d"),
+                "sales": sum(s.total_amount for s in day_sales),
+                "orders": len(day_sales)
+            })
+        
+        return {
+            "summary": {
+                "total_sales": total_sales,
+                "total_orders": total_orders,
+                "avg_order_value": avg_order_value,
+                "total_customers": total_customers,
+                "new_customers": new_customers,
+                "active_customers": active_customers,
+                "conversion_rate": 3.2,
+                "repeat_rate": 15.5,
+                "return_rate": 2.1,
+                "avg_ship_time": 24,
+                "satisfaction": 95.3
+            },
+            "category_data": category_data,
+            "daily_data": daily_data,
+            "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/api/reports/traditional/weekly")
+def get_traditional_weekly_report(db: Session = Depends(get_db)):
+    try:
+        today = datetime.now().date()
+        week_start = today - timedelta(days=today.weekday())
+        week_end = week_start + timedelta(days=6)
+        
+        weekly_sales = db.query(SalesRecord).filter(
+            SalesRecord.sale_date >= week_start,
+            SalesRecord.sale_date <= week_end
+        ).all()
+        
+        total_sales = sum(s.total_amount for s in weekly_sales)
+        total_orders = len(weekly_sales)
+        avg_order_value = total_sales / total_orders if total_orders > 0 else 0
+        
+        customers = db.query(CustomerRecord).all()
+        total_customers = len(customers)
+        new_customers = len([c for c in customers if c.registration_date.date() >= week_start])
+        active_customers = len([c for c in customers if c.is_active])
+        
+        category_sales = {}
+        for sale in weekly_sales:
+            category = sale.category
+            if category not in category_sales:
+                category_sales[category] = {"sales": 0, "orders": 0}
+            category_sales[category]["sales"] += sale.total_amount
+            category_sales[category]["orders"] += 1
+        
+        category_data = []
+        for cat, data in category_sales.items():
+            percentage = (data["sales"] / total_sales * 100) if total_sales > 0 else 0
+            category_data.append({
+                "category": cat,
+                "sales": data["sales"],
+                "orders": data["orders"],
+                "percentage": round(percentage, 1)
+            })
+        
+        daily_data = []
+        for i in range(6, -1, -1):
+            date = today - timedelta(days=i)
+            day_sales = db.query(SalesRecord).filter(
+                SalesRecord.sale_date >= date,
+                SalesRecord.sale_date < date + timedelta(days=1)
+            ).all()
+            daily_data.append({
+                "date": date.strftime("%m-%d"),
+                "sales": sum(s.total_amount for s in day_sales),
+                "orders": len(day_sales)
+            })
+        
+        return {
+            "summary": {
+                "total_sales": total_sales,
+                "total_orders": total_orders,
+                "avg_order_value": avg_order_value,
+                "total_customers": total_customers,
+                "new_customers": new_customers,
+                "active_customers": active_customers,
+                "conversion_rate": 3.2,
+                "repeat_rate": 15.5,
+                "return_rate": 2.1,
+                "avg_ship_time": 24,
+                "satisfaction": 95.3
+            },
+            "category_data": category_data,
+            "daily_data": daily_data,
+            "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/api/alerts/traditional")
+def get_traditional_alerts(db: Session = Depends(get_db)):
+    try:
+        alerts = db.query(AlertRecord).filter(AlertRecord.resolved == False).all()
+        alert_list = []
+        for alert in alerts:
+            alert_list.append({
+                "id": alert.id,
+                "type": alert.alert_type,
+                "severity": alert.severity,
+                "message": alert.message,
+                "created_at": alert.created_at.strftime("%Y-%m-%d %H:%M:%S")
+            })
+        return {"alerts": alert_list}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/api/anomalies/detect/traditional")
+def detect_traditional_anomalies(db: Session = Depends(get_db)):
+    try:
+        today = datetime.now().date()
+        yesterday = today - timedelta(days=1)
+        
+        inventory_items = db.query(InventoryRecord).all()
+        today_sales = db.query(SalesRecord).filter(
+            SalesRecord.sale_date >= today,
+            SalesRecord.sale_date < today + timedelta(days=1)
+        ).all()
+        yesterday_sales = db.query(SalesRecord).filter(
+            SalesRecord.sale_date >= yesterday,
+            SalesRecord.sale_date < today
+        ).all()
+        
+        anomalies = []
+        
+        for item in inventory_items:
+            if item.stock_quantity == 0:
+                message = f"【高优先级】{item.stock_name}商品库存已经为零，请立即补充库存！！！"
+                anomalies.append({
+                    "id": len(anomalies) + 1,
+                    "type": "inventory_empty",
+                    "severity": "high",
+                    "message": message,
+                    "product_name": item.stock_name,
+                    "stock": 0,
+                    "threshold": item.threshold,
+                    "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                })
+            elif item.stock_quantity < item.threshold:
+                message = f"【低优先级】{item.stock_name}商品库存不足，请补充库存！"
+                anomalies.append({
+                    "id": len(anomalies) + 1,
+                    "type": "inventory_low",
+                    "severity": "low",
+                    "message": message,
+                    "product_name": item.stock_name,
+                    "stock": item.stock_quantity,
+                    "threshold": item.threshold,
+                    "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                })
+        
+        today_total = sum(s.total_amount for s in today_sales)
+        yesterday_total = sum(s.total_amount for s in yesterday_sales)
+        
+        if yesterday_total > 0 and today_total < yesterday_total * 0.5:
+            ratio = round((today_total / yesterday_total) * 100, 1)
+            message = f"【中优先级】{today.strftime('%Y-%m-%d')}的销售额低于昨日的{ratio}%，请尽快调整销售策略！！"
+            anomalies.append({
+                "id": len(anomalies) + 1,
+                "type": "sales_drop",
+                "severity": "medium",
+                "message": message,
+                "ratio": ratio,
+                "date": today.strftime("%Y-%m-%d"),
+                "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            })
+        
+        return {"alerts": anomalies}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

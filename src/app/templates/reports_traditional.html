@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>传统报表 - 电商数据分析平台</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif; background: #f5f7fa; }
+        
+        .container { display: flex; min-height: 100vh; }
+        
+        .sidebar {
+            width: 250px;
+            background: linear-gradient(180deg, #2d3748 0%, #1a202c 100%);
+            color: white;
+            padding: 20px;
+        }
+        .sidebar .logo {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        .sidebar nav ul { list-style: none; }
+        .sidebar nav ul li { margin-bottom: 10px; }
+        .sidebar nav ul li a {
+            color: rgba(255,255,255,0.8);
+            text-decoration: none;
+            padding: 12px 16px;
+            display: block;
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+        .sidebar nav ul li a:hover, .sidebar nav ul li a.active {
+            background: rgba(102, 126, 234, 0.3);
+            color: white;
+        }
+        
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+        }
+        .header {
+            background: white;
+            padding: 20px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+        .header h1 { font-size: 24px; color: #2d3748; }
+        .header .actions { display: flex; gap: 15px; }
+        
+        .btn {
+            padding: 10px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+        .btn:hover { transform: translateY(-2px); }
+        .btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+        .btn-secondary { background: #e9ecef; color: #495057; }
+        
+        .report-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .summary-boxes {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+        }
+        .summary-box {
+            background: white;
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            border-left: 4px solid #667eea;
+        }
+        .summary-box .label { color: #64748b; font-size: 13px; margin-bottom: 8px; }
+        .summary-box .value { font-size: 32px; font-weight: 700; color: #1e293b; }
+        .summary-box.sales { border-left-color: #667eea; }
+        .summary-box.orders { border-left-color: #10b981; }
+        .summary-box.avg { border-left-color: #f59e0b; }
+        .summary-box.customers { border-left-color: #ef4444; }
+        
+        .section-card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        .section-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .section-title h3 { font-size: 18px; color: #1e293b; }
+        .section-title .icon { font-size: 24px; }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+        }
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 16px;
+            background: #f8fafc;
+            border-radius: 8px;
+            margin-bottom: 8px;
+        }
+        .stat-row .label { color: #64748b; }
+        .stat-row .value { font-weight: 600; color: #1e293b; }
+        
+        .chart-container {
+            height: 300px;
+            background: #f8fafc;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        
+        .table-container {
+            overflow-x: auto;
+            margin-top: 20px;
+        }
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .data-table th, .data-table td {
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .data-table th {
+            background: #f8fafc;
+            font-weight: 600;
+            color: #64748b;
+            font-size: 13px;
+        }
+        .data-table tr:hover { background: #f8fafc; }
+        
+        .loading {
+            text-align: center;
+            padding: 80px 50px;
+            color: #666;
+        }
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <aside class="sidebar">
+            <div class="logo">📊 数据分析平台</div>
+            <nav>
+                <ul>
+                    <li><a href="/dashboard">数据报表</a></li>
+                    <li><a href="/reports-traditional" class="active">传统报表</a></li>
+                    <li><a href="/reports">智能报表</a></li>
+                    <li><a href="/products">商品管理</a></li>
+                    <li><a href="/inventory">库存管理</a></li>
+                    <li><a href="/alerts">异常预警</a></li>
+                    <li><a href="/alerts-traditional">传统预警</a></li>
+                </ul>
+            </nav>
+        </aside>
+        
+        <main class="main-content">
+            <header class="header">
+                <h1>📋 传统业务报表</h1>
+                <div class="actions">
+                    <button class="btn btn-secondary" onclick="generateDailyReport()">📅 日报</button>
+                    <button class="btn btn-secondary" onclick="generateWeeklyReport()">📆 周报</button>
+                    <button class="btn btn-primary" onclick="refreshReport()">🔄 刷新</button>
+                </div>
+            </header>
+            
+            <div class="report-container" id="reportContainer">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>正在加载报表...</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        async function generateDailyReport() {
+            document.getElementById('reportContainer').innerHTML = `
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>正在生成日报...</p>
+                </div>
+            `;
+            
+            const response = await fetch('/api/reports/traditional/daily');
+            const data = await response.json();
+            displayReport(data, '日报');
+        }
+        
+        async function generateWeeklyReport() {
+            document.getElementById('reportContainer').innerHTML = `
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>正在生成周报...</p>
+                </div>
+            `;
+            
+            const response = await fetch('/api/reports/traditional/weekly');
+            const data = await response.json();
+            displayReport(data, '周报');
+        }
+        
+        function displayReport(data, reportType) {
+            const summary = data.summary;
+            const categoryData = data.category_data;
+            const dailyData = data.daily_data;
+            
+            document.getElementById('reportContainer').innerHTML = `
+                <div class="summary-boxes">
+                    <div class="summary-box sales">
+                        <div class="label">总销售额</div>
+                        <div class="value">¥${summary.total_sales.toLocaleString()}</div>
+                    </div>
+                    <div class="summary-box orders">
+                        <div class="label">订单总数</div>
+                        <div class="value">${summary.total_orders}</div>
+                    </div>
+                    <div class="summary-box avg">
+                        <div class="label">平均订单价</div>
+                        <div class="value">¥${summary.avg_order_value.toFixed(2)}</div>
+                    </div>
+                    <div class="summary-box customers">
+                        <div class="label">客户总数</div>
+                        <div class="value">${summary.total_customers}</div>
+                    </div>
+                </div>
+                
+                <div class="section-card">
+                    <div class="section-title">
+                        <span class="icon">📊</span>
+                        <h3>关键指标</h3>
+                    </div>
+                    <div class="stats-grid">
+                        <div>
+                            <div class="stat-row"><span class="label">客单价</span><span class="value">¥${summary.avg_order_value.toFixed(2)}</span></div>
+                            <div class="stat-row"><span class="label">转化率</span><span class="value">${summary.conversion_rate}%</span></div>
+                            <div class="stat-row"><span class="label">复购率</span><span class="value">${summary.repeat_rate}%</span></div>
+                            <div class="stat-row"><span class="label">退货率</span><span class="value">${summary.return_rate}%</span></div>
+                        </div>
+                        <div>
+                            <div class="stat-row"><span class="label">新增客户</span><span class="value">${summary.new_customers}</span></div>
+                            <div class="stat-row"><span class="label">活跃客户</span><span class="value">${summary.active_customers}</span></div>
+                            <div class="stat-row"><span class="label">平均发货时间</span><span class="value">${summary.avg_ship_time}小时</span></div>
+                            <div class="stat-row"><span class="label">满意度</span><span class="value">${summary.satisfaction}%</span></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="section-card">
+                    <div class="section-title">
+                        <span class="icon">📈</span>
+                        <h3>销售趋势 (最近7天)</h3>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="salesChart"></canvas>
+                    </div>
+                </div>
+                
+                <div class="section-card">
+                    <div class="section-title">
+                        <span class="icon">📦</span>
+                        <h3>分类销售占比</h3>
+                    </div>
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr><th>分类名称</th><th>销售额</th><th>订单数</th><th>占比</th></tr>
+                            </thead>
+                            <tbody>
+                                ${categoryData.map(cat => `
+                                <tr>
+                                    <td>${cat.category}</td>
+                                    <td>¥${cat.sales.toLocaleString()}</td>
+                                    <td>${cat.orders}</td>
+                                    <td>${cat.percentage}%</td>
+                                </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+            
+            renderChart(dailyData);
+        }
+        
+        function renderChart(data) {
+            const labels = data.map(d => d.date);
+            const sales = data.map(d => d.sales);
+            const orders = data.map(d => d.orders);
+            
+            const ctx = document.getElementById('salesChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: '销售额',
+                            data: sales,
+                            borderColor: '#667eea',
+                            backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                            fill: true,
+                            tension: 0.4
+                        },
+                        {
+                            label: '订单数',
+                            data: orders,
+                            borderColor: '#10b981',
+                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                            fill: true,
+                            tension: 0.4,
+                            yAxisID: 'y1'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: { display: true, text: '销售额' }
+                        },
+                        y1: {
+                            position: 'right',
+                            beginAtZero: true,
+                            title: { display: true, text: '订单数' }
+                        }
+                    }
+                }
+            });
+        }
+        
+        function refreshReport() {
+            generateDailyReport();
+        }
+        
+        window.onload = generateDailyReport;
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</body>
+</html>

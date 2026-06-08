@@ -1,4 +1,4 @@
-# 电商后台自动报表与异常预警系统
+# 个体电商后台运营辅助系统
 
 ## 项目简介
 
@@ -61,7 +61,75 @@ src/
 
 ```bash
 pip install -r requirements.txt
-```
+```# src/app/agent/anomaly_detector.py
+class AnomalyDetector:
+    def __init__(self, db: Session):
+        self.db = db
+        self.llm = get_deepseek_client()
+    
+    def detect_inventory_anomalies(self):
+        """检测库存异常"""
+        inventory = self.db.query(InventoryRecord).all()
+        anomalies = []
+        
+        for item in inventory:
+            if item.stock_quantity == 0:
+                anomalies.append({
+                    "type": "inventory_empty",
+                    "product_name": item.stock_name,
+                    "severity": "high"
+                })# src/app/agent/anomaly_detector.py
+class AnomalyDetector:
+    def __init__(self, db: Session):
+        self.db = db
+        self.llm = get_deepseek_client()
+    
+    def detect_inventory_anomalies(self):
+        """检测库存异常"""
+        inventory = self.db.query(InventoryRecord).all()
+        anomalies = []
+        
+        for item in inventory:
+            if item.stock_quantity == 0:
+                anomalies.append({
+                    "type": "inventory_empty",
+                    "product_name": item.stock_name,
+                    "severity": "high"
+                })
+            elif item.stock_quantity < item.threshold:
+                anomalies.append({
+                    "type": "inventory_low", 
+                    "product_name": item.stock_name,
+                    "severity": "low"
+                })
+        return anomalies
+    
+    def generate_anomaly_report(self):
+        """生成异常报告"""
+        anomalies = self.detect_inventory_anomalies() + self.detect_sales_anomalies()
+        
+        if anomalies:
+            prompt = ANOMALY_DETECTION_PROMPT.format(data=str(anomalies))
+            response = self.llm.invoke(prompt)
+            return {"anomalies": anomalies, "analysis": response.content}
+
+            elif item.stock_quantity < item.threshold:
+                anomalies.append({
+                    "type": "inventory_low", 
+                    "product_name": item.stock_name,
+                    "severity": "low"
+                })
+        return anomalies
+    
+    def generate_anomaly_report(self):
+        """生成异常报告"""
+        anomalies = self.detect_inventory_anomalies() + self.detect_sales_anomalies()
+        
+        if anomalies:
+            prompt = ANOMALY_DETECTION_PROMPT.format(data=str(anomalies))
+            response = self.llm.invoke(prompt)
+            return {"anomalies": anomalies, "analysis": response.content}
+
 
 ### 2. 环境变量配置
 
